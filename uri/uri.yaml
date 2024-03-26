@@ -1,0 +1,75 @@
+---
+- name: URI Test Playbook
+  gather_facts: false
+  hosts: localhost
+  tasks:
+    - name: Set Facts
+      ansible.builtin.set_fact:
+        acs_central_endpoint: #TODO Input central endpoint central-stackrox.apps.<cluster domain>
+        acs_api_token: #<TODO Input API Token>
+
+    - name: Get Policy IDs from ACS
+      ansible.builtin.uri:
+        url: "https://{{ acs_central_endpoint }}/v1/policies"
+        validate_certs: no
+        method: GET
+        body_format: json
+        status_code: [200]
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ acs_api_token }}"
+      register: api_return
+
+    - name: Policy ID debug
+      debug:
+        msg: "{{ api_return.json.policies | json_query('[*].id') }}"
+
+    - set_fact:
+        policy_ids: "{{ api_return.json.policies | json_query('[*].id') }}"
+
+    - name: Get policies from ACS
+      ansible.builtin.uri:
+        url: "https://{{ acs_central_endpoint }}/v1/policies/export"
+        validate_certs: no
+        method: POST
+        body_format: json
+        status_code: [200]
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ acs_api_token }}"
+        body:
+          policyIds: "{{ policy_ids }}"
+      register: api_return
+
+    - name: Policy debug
+      debug:
+        msg: "{{ api_return.json.policies }}"
+
+    - name: Copy Policies to file
+      copy:
+        content: "{{ api_return.json.policies }}"
+        dest: ./policies.out
+
+    - name: Import policies into ACS
+      ansible.builtin.uri:
+        url: "https://{{ acs_central_endpoint }}/v1/policies/import"
+        validate_certs: no
+        method: POST
+        body_format: json
+        status_code: [ 200 ]
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ acs_api_token }}"
+        body:
+          metadata:
+            overwrite: true
+          policies: "{{ lookup('file', './policies.in') }}"
+      register: api_return
+
+    - name: Import debug
+      debug:
+        msg: "{{ api_return }}"
+...

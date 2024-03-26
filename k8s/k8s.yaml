@@ -1,0 +1,9 @@
+---
+- name: k8s Test Playbook
+  gather_facts: false
+  hosts: localhost
+  tasks:
+    - name: Debug task
+      debug:
+        msg: "This is a debug message"
+...
