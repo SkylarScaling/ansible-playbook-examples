@@ -1,0 +1,61 @@
+---
+- name: Modify RBAC from Red Hat Quay via the API
+  gather_facts: false
+  hosts: localhost
+  #  vars_prompt:
+  #    - name: quay_api_endpoint
+  #      prompt: Enter Quay API Endpoint
+  #      private: no
+  #      confirm: no
+  #    - name: quay_api_token
+  #      prompt: Enter Quay API Token
+  #      private: no
+  #      confirm: no
+  tasks:
+    - name: Create User
+      ansible.builtin.uri:
+        url: "https://{{ quay_api_endpoint }}/api/v1/superuser/users/"
+        validate_certs: no
+        method: POST
+        body_format: json
+        status_code: [ 200, 400 ] # 400 allows BAD REQUEST in case user already exists
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ quay_api_token }}"
+        body:
+          username: test-user
+      register: api_return
+
+    - name: Create Repository
+      ansible.builtin.uri:
+        url: "https://{{ quay_api_endpoint }}/api/v1/repository"
+        validate_certs: no
+        method: POST
+        body_format: json
+        status_code: [ 201, 400 ] # 400 allows BAD REQUEST in case repo already exists
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ quay_api_token }}"
+        body:
+          repository: "test-repo"
+          visibility: "public"
+          description: "This is a Test Repo"
+      register: api_return
+
+    - name: Update User Permissions for Repository
+      ansible.builtin.uri:
+        url: "https://{{ quay_api_endpoint }}/api/v1/repository/quayadmin/test-repo/permissions/user/test-user"
+        validate_certs: no
+        method: PUT
+        body_format: json
+        status_code: [ 200 ]
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ quay_api_token }}"
+        body:
+          role: admin
+      register: api_return
+...

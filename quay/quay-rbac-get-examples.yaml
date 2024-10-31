@@ -1,0 +1,65 @@
+---
+- name: Get RBAC information from Red Hat Quay via the API
+  gather_facts: false
+  hosts: localhost
+  #  vars_prompt:
+  #    - name: quay_api_endpoint
+  #      prompt: Enter Quay API Endpoint
+  #      private: no
+  #      confirm: no
+  #    - name: quay_api_token
+  #      prompt: Enter Quay API Token
+  #      private: no
+  #      confirm: no
+  tasks:
+    - name: Get Users
+      ansible.builtin.uri:
+        url: "https://{{ quay_api_endpoint }}/api/v1/superuser/users"
+        validate_certs: no
+        method: GET
+        body_format: json
+        status_code: [ 200 ]
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ quay_api_token }}"
+      register: api_return
+
+    - name: Output Users
+      debug:
+        msg: "{{ api_return.json.users }}"
+
+    - name: Get Repositories
+      ansible.builtin.uri:
+        url: "https://{{ quay_api_endpoint }}/api/v1/repository?public=true"
+        validate_certs: no
+        method: GET
+        body_format: json
+        status_code: [ 200 ]
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ quay_api_token }}"
+      register: api_return
+
+    - name: Output Repositories
+      debug:
+        msg: "{{ api_return.json.repositories }}"
+
+    - name: Get User Permissions for Repository
+      ansible.builtin.uri:
+        url: "https://{{ quay_api_endpoint }}/api/v1/repository/devel/example/permissions/user/quaydevel"
+        validate_certs: no
+        method: GET
+        body_format: json
+        status_code: [ 200 ]
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ quay_api_token }}"
+      register: api_return
+
+    - name: Output User Permissions
+      debug:
+        msg: "{{ api_return.json }}"
+...
