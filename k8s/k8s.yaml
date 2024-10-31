@@ -3,7 +3,79 @@
   gather_facts: false
   hosts: localhost
   tasks:
-    - name: Debug task
-      debug:
-        msg: "This is a debug message"
+    - name: Wait for Nodes to be Created
+      k8s_info:
+        host: "https://api.hcp-416d.pq5g.p3.openshiftapps.com:443"
+        api_version: v1
+        kind: Node
+      register: output_info
+      until: (output_info.resources | length) >= 3
+      delay: 30
+      retries: 20
+
+    - name: Wait for Nodes to become Ready
+      k8s_info:
+        host: "https://api.hcp-416d.pq5g.p3.openshiftapps.com:443"
+        api_version: v1
+        kind: Node
+      register: output_info
+      until: (output_info.resources | json_query(query) | unique | length == 1) and (output_info.resources | json_query(query) | unique == [["True"]])
+      delay: 30
+      retries: 20
+      vars:
+        condition: 'Ready'
+        query: "[*].status.conditions[?type=='{{ condition }}'].status"
+
+#    - name: Get API tokenfile
+#      include_vars: "~/.acm-token"
+#
+#    - name: Set Facts
+#      ansible.builtin.set_fact:
+#        ocp_cluster_address: "cluster-xxxx.example.com" #TODO Input cluster domain
+#        acm_token_var: "acm_api_token"
+#
+#    - name: Wait for stackrox Namespace to be created
+#      k8s_info:
+#        host: "https://api.{{ ocp_cluster_address }}:6443"
+#        validate_certs: no
+#        api_key: "{{ vars[acm_token_var] }}"
+#        kind: Namespace
+#        api_version: v1
+#        name: stackrox
+#      register: output_info
+#      until: output_info.resources | length > 0
+#      delay: 2
+#      retries: 20
+#
+#    - debug:
+#        msg: "{{ output_info }}"
+#
+#    - name: Patch ACM Subscription-Admin ClusterRoleBinding for Users and Groups
+#      kubernetes.core.k8s_json_patch:
+#        kind: ClusterRoleBinding
+#        api_version: rbac.authorization.k8s.io/v1
+#        name: open-cluster-management:subscription-admin
+#        patch:
+#          - op: add
+#            path: /subjects/-
+#            value:
+#              kind: "{{ item.auth_type }}"
+#              name: "{{ item.auth_target }}"
+#      loop: "{{ auth_target_list }}"
+#      when: "item.auth_type != 'ServiceAccount'"
+#
+#    - name: Patch ACM Subscription-Admin ClusterRoleBinding for Service Accounts
+#      kubernetes.core.k8s_json_patch:
+#        kind: ClusterRoleBinding
+#        api_version: rbac.authorization.k8s.io/v1
+#        name: open-cluster-management:subscription-admin
+#        patch:
+#          - op: add
+#            path: /subjects/-
+#            value:
+#              kind: "{{ item.auth_type }}"
+#              name: "{{ item.auth_target }}"
+#              namespace: "{{ item.sa_namespace }}"
+#      loop: "{{ auth_target_list }}"
+#      when: "item.auth_type == 'ServiceAccount'"
 ...

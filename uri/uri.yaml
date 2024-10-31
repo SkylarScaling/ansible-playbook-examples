@@ -5,56 +5,25 @@
   tasks:
     - name: Set Facts
       ansible.builtin.set_fact:
-        acs_central_endpoint: #TODO Input central endpoint central-stackrox.apps.<cluster domain>
-        acs_api_token: #<TODO Input API Token>
+        cluster_address: <clustername.example.com>
+        acs_central_endpoint: <central-stackrox.apps.clusterdomain.com>
+        acs_api_token: <api_token>
 
-    - name: Get Policy IDs from ACS
-      ansible.builtin.uri:
-        url: "https://{{ acs_central_endpoint }}/v1/policies"
+    - name: Get ACS Admin Secret
+      k8s_info:
+        host: "https://api.{{ cluster_address }}:6443"
         validate_certs: no
-        method: GET
-        body_format: json
-        status_code: [200]
-        return_content: true
-        headers:
-          Content-Type: application/json
-          Authorization: "Bearer {{ acs_api_token }}"
-      register: api_return
+        kind: Secret
+        namespace: stackrox
+        name: central-htpasswd
+      register: acs_secret
 
-    - name: Policy ID debug
-      debug:
-        msg: "{{ api_return.json.policies | json_query('[*].id') }}"
+    - debug:
+        msg: "{{ acs_secret.resources[0].data.password }}"
 
-    - set_fact:
-        policy_ids: "{{ api_return.json.policies | json_query('[*].id') }}"
-
-    - name: Get policies from ACS
+    - name: Get ACS API Token
       ansible.builtin.uri:
-        url: "https://{{ acs_central_endpoint }}/v1/policies/export"
-        validate_certs: no
-        method: POST
-        body_format: json
-        status_code: [200]
-        return_content: true
-        headers:
-          Content-Type: application/json
-          Authorization: "Bearer {{ acs_api_token }}"
-        body:
-          policyIds: "{{ policy_ids }}"
-      register: api_return
-
-    - name: Policy debug
-      debug:
-        msg: "{{ api_return.json.policies }}"
-
-    - name: Copy Policies to file
-      copy:
-        content: "{{ api_return.json.policies }}"
-        dest: ./policies.out
-
-    - name: Import policies into ACS
-      ansible.builtin.uri:
-        url: "https://{{ acs_central_endpoint }}/v1/policies/import"
+        url: "https://{{ acs_central_endpoint }}/v1/apitokens/generate"
         validate_certs: no
         method: POST
         body_format: json
@@ -62,14 +31,96 @@
         return_content: true
         headers:
           Content-Type: application/json
-          Authorization: "Bearer {{ acs_api_token }}"
+        user: admin
+        password: <admin_password>
+        force_basic_auth: true
         body:
-          metadata:
-            overwrite: true
-          policies: "{{ lookup('file', './policies.in') }}"
+          name: "sky-token"
+          roles: ["Admin"]
       register: api_return
 
-    - name: Import debug
-      debug:
-        msg: "{{ api_return }}"
+    - debug:
+        msg: "{{ api_return.json.token }}"
+
+#    - name: Get Policy IDs from ACS
+#      ansible.builtin.uri:
+#        url: "https://{{ acs_central_endpoint }}/v1/policies"
+#        validate_certs: no
+#        method: GET
+#        body_format: json
+#        status_code: [200]
+#        return_content: true
+#        headers:
+#          Content-Type: application/json
+#          Authorization: "Bearer {{ acs_api_token }}"
+#      register: api_return
+#
+#    - name: Policy ID debug
+#      debug:
+#        msg: "{{ api_return.json.policies | json_query('[*].id') }}"
+#
+#    - set_fact:
+#        policy_ids: "{{ api_return.json.policies | json_query('[*].id') }}"
+
+#    - name: Get Alerts from ACS
+#      ansible.builtin.uri:
+#        url: "https://{{ acs_central_endpoint }}/v1/alerts"
+#        validate_certs: no
+#        method: GET
+#        body_format: json
+#        status_code: [ 200 ]
+#        return_content: true
+#        headers:
+#          Content-Type: application/json
+#          Authorization: "Bearer {{ acs_api_token }}"
+#      register: api_return
+#
+#    - name: Alerts debug
+#      debug:
+#        msg: "{{ api_return.json }}"
+
+#    - name: Get policies from ACS
+#      ansible.builtin.uri:
+#        url: "https://{{ acs_central_endpoint }}/v1/policies/export"
+#        validate_certs: no
+#        method: POST
+#        body_format: json
+#        status_code: [200]
+#        return_content: true
+#        headers:
+#          Content-Type: application/json
+#          Authorization: "Bearer {{ acs_api_token }}"
+#        body:
+#          policyIds: "{{ policy_ids }}"
+#      register: api_return
+#
+#    - name: Policy debug
+#      debug:
+#        msg: "{{ api_return.json.policies }}"
+#
+#    - name: Copy Policies to file
+#      copy:
+#        content: "{{ api_return.json.policies }}"
+#        dest: ./policies.out
+#
+#    - name: Import policies into ACS
+#      ansible.builtin.uri:
+#        url: "https://{{ acs_central_endpoint }}/v1/policies/import"
+#        validate_certs: no
+#        method: POST
+#        body_format: json
+#        status_code: [ 200 ]
+#        return_content: true
+#        headers:
+#          Content-Type: application/json
+#          Authorization: "Bearer {{ acs_api_token }}"
+#        body:
+#          metadata:
+#            overwrite: true
+#          policies: "{{ lookup('file', './policies.in') }}"
+#      register: api_return
+#
+#    - name: Import debug
+#      debug:
+#        msg: "{{ api_return }}"
 ...

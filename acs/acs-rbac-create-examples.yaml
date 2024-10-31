@@ -1,0 +1,108 @@
+---
+- name: Create Red Hat Advanced Cluster Security (RHACS) RBAC Components via the ACS API
+  gather_facts: false
+  hosts: localhost
+#  vars_prompt:
+#    - name: acs_central_endpoint
+#      prompt: Enter ACS Central Endpoint
+#      private: no
+#      confirm: no
+#    - name: acs_api_token
+#      prompt: Enter ACS API Token
+#      private: no
+#      confirm: no
+  tasks:
+    - name: Set Role vars
+      set_fact:
+        role_name: Test Role
+
+    - name: Create Role in ACS
+      ansible.builtin.uri:
+        url: "https://{{ acs_central_endpoint }}/v1/roles/{{ role_name | urlencode }}"
+        validate_certs: no
+        method: POST
+        body_format: json
+        status_code: [200, 409] # 409 allows conflict if Role already exists
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ acs_api_token }}"
+        body:
+          name: "{{ role_name }}"
+          description: Role Description goes here
+          permissionSetId: ffffffff-ffff-fff4-f5ff-ffffffffffff # Default Admin Permission Set ID
+          accessScopeId: ffffffff-ffff-fff4-f5ff-ffffffffffff # Default Unrestricted Access Scope ID
+          globalAccess: NO_ACCESS
+          traits:
+            mutabilityMode: ALLOW_MUTATE
+            visibility: VISIBLE
+            origin: IMPERATIVE
+      register: api_return
+
+    - name: Create Access Scope in ACS
+      ansible.builtin.uri:
+        url: "https://{{ acs_central_endpoint }}/v1/simpleaccessscopes"
+        validate_certs: no
+        method: POST
+        body_format: json
+        status_code: [200, 409] # 409 allows conflict if Role already exists
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ acs_api_token }}"
+        body:
+          name: Test Access Scope
+          description: Access Scope Description goes here
+          rules:
+            includedClusters: ["local-cluster"]
+          traits:
+            mutabilityMode: ALLOW_MUTATE
+            visibility: VISIBLE
+            origin: IMPERATIVE
+      register: api_return
+
+    - name: Create Permission Set in ACS
+      ansible.builtin.uri:
+        url: "https://{{ acs_central_endpoint }}/v1/permissionsets"
+        validate_certs: no
+        method: POST
+        body_format: json
+        status_code: [200, 409] # 409 allows conflict if Role already exists
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ acs_api_token }}"
+        body:
+          name: Test Permission Set
+          description: Permission Set Description goes here
+          resourceToAccess:                
+            Access: READ_WRITE_ACCESS
+            Administration: READ_WRITE_ACCESS
+            Alert: READ_WRITE_ACCESS
+            CVE: READ_WRITE_ACCESS
+            Cluster: READ_WRITE_ACCESS
+            Compliance: READ_WRITE_ACCESS
+            Deployment: READ_WRITE_ACCESS
+            DeploymentExtension: READ_WRITE_ACCESS
+            Detection: READ_WRITE_ACCESS
+            Image: READ_WRITE_ACCESS
+            Integration: READ_WRITE_ACCESS
+            K8sRole: READ_WRITE_ACCESS
+            K8sRoleBinding: READ_WRITE_ACCESS
+            K8sSubject: READ_WRITE_ACCESS
+            Namespace: READ_WRITE_ACCESS
+            NetworkGraph: READ_WRITE_ACCESS
+            NetworkPolicy: READ_WRITE_ACCESS
+            Node: READ_WRITE_ACCESS
+            Secret: READ_WRITE_ACCESS
+            ServiceAccount: READ_WRITE_ACCESS
+            VulnerabilityManagementApprovals: READ_WRITE_ACCESS
+            VulnerabilityManagementRequests: READ_WRITE_ACCESS
+            WatchedImage: READ_WRITE_ACCESS
+            WorkflowAdministration: READ_WRITE_ACCESS         
+          traits:
+            mutabilityMode: ALLOW_MUTATE
+            visibility: VISIBLE
+            origin: IMPERATIVE
+      register: api_return
+...
