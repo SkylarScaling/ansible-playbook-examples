@@ -27,6 +27,21 @@
           username: test-user
       register: api_return
 
+    - name: Create Organization
+      ansible.builtin.uri:
+        url: "https://{{ quay_api_endpoint }}/api/v1/organization/"
+        validate_certs: no
+        method: POST
+        body_format: json
+        status_code: [ 201, 400 ] # 400 allows BAD REQUEST in case user already exists
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ quay_api_token }}"
+        body:
+          username: test-organization
+      register: api_return
+
     - name: Create Repository
       ansible.builtin.uri:
         url: "https://{{ quay_api_endpoint }}/api/v1/repository"

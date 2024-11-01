@@ -29,6 +29,23 @@
       debug:
         msg: "{{ api_return.json.users }}"
 
+    - name: Get Organizations
+      ansible.builtin.uri:
+        url: "https://{{ quay_api_endpoint }}/api/v1/superuser/organizations"
+        validate_certs: no
+        method: GET
+        body_format: json
+        status_code: [ 200 ]
+        return_content: true
+        headers:
+          Content-Type: application/json
+          Authorization: "Bearer {{ quay_api_token }}"
+      register: api_return
+
+    - name: Output Organizations
+      debug:
+        msg: "{{ api_return.json.organizations }}"
+
     - name: Get Repositories
       ansible.builtin.uri:
         url: "https://{{ quay_api_endpoint }}/api/v1/repository?public=true"
